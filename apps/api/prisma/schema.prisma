@@ -1,0 +1,56 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Person {
+  id          String   @id @default(cuid())
+  telegramId  String   @unique @map("telegram_id")
+  displayName String?  @map("display_name")
+  lastSeenAt  DateTime @default(now()) @map("last_seen_at")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("people")
+}
+
+model Household {
+  id             String   @id @default(cuid())
+  telegramChatId String   @unique @map("telegram_chat_id")
+  name           String?
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+  lists          List[]
+
+  @@map("households")
+}
+
+model List {
+  id          String     @id @default(cuid())
+  name        String
+  householdId String     @map("household_id")
+  household   Household  @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  items       ListItem[]
+  createdAt   DateTime   @default(now()) @map("created_at")
+  updatedAt   DateTime   @updatedAt @map("updated_at")
+
+  @@unique([householdId, name])
+  @@map("lists")
+}
+
+model ListItem {
+  id        String   @id @default(cuid())
+  name      String
+  checked   Boolean  @default(false)
+  listId    String   @map("list_id")
+  list      List     @relation(fields: [listId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([listId, name])
+  @@map("list_items")
+}
