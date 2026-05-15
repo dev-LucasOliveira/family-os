@@ -6,3 +6,11 @@ dist
 .DS_Store
 coverage
 .turbo
+
+# Build artifacts from packages/shared (compiled in-place)
+packages/shared/src/*.js
+packages/shared/src/*.js.map
+packages/shared/src/*.d.ts
+packages/shared/src/**/*.js
+packages/shared/src/**/*.js.map
+packages/shared/src/**/*.d.ts
