@@ -6,6 +6,7 @@ const envSchema = z.object({
   PORT: z.coerce.number().default(3000),
   LOCALE: z.enum(['pt-BR']).default('pt-BR'),
   DATABASE_URL: z.string().min(1),
+  DIRECT_URL: z.string().min(1),
   TELEGRAM_BOT_TOKEN: z.string().min(1),
   TELEGRAM_WEBHOOK_SECRET: z.string().optional(),
   GROQ_API_KEY: z.string().optional(),
