@@ -4,6 +4,7 @@ import { env } from '../config/env';
 import { ListsService } from '../lists/lists.service';
 import { RemindersService } from '../reminders/reminders.service';
 import { formatSpDate } from '../reminders/parse-reminder-date';
+import { ConversationStoreService } from './conversation-store.service';
 
 @Injectable()
 export class IntentHandlerService {
@@ -12,6 +13,7 @@ export class IntentHandlerService {
   constructor(
     private readonly listsService: ListsService,
     private readonly remindersService: RemindersService,
+    private readonly conversationStore: ConversationStoreService,
   ) {}
 
   async execute(
@@ -136,11 +138,16 @@ export class IntentHandlerService {
         }
 
         if (matches.length > 1) {
+          this.conversationStore.setPendingCancelOptions(
+            householdId,
+            matches.map((r) => ({ id: r.id, text: r.text, remindAt: r.remindAt })),
+          );
           return this.messages.reminderCancelAmbiguous(
             matches.map((r) => `${formatSpDate(r.remindAt)} — ${r.text}`),
           );
         }
 
+        this.conversationStore.clearPendingCancelOptions(householdId);
         await this.remindersService.deleteReminder(matches[0]!.id);
         return this.messages.reminderCancelled({ text: matches[0]!.text });
       }
