@@ -37,8 +37,14 @@ export class TelegramMessageHandler {
 
     this.logger.debug(`[household] id=${household.id} chat=${telegramChatId}`);
 
-    const text = message.text?.trim();
+    const raw = message.text?.trim();
+
+    // In group chats, messages are often prefixed with "@botname". Strip it.
+    const text = raw?.replace(/^@\S+\s*/u, '').trim();
+
     if (!text) {
+      // Ignore service messages (bot added to group, etc.) silently in groups
+      if (message.chat.type !== 'private') return;
       await this.telegramService.sendMessage(message.chat.id, this.messages.emptyMessageHint());
       return;
     }
