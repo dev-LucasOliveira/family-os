@@ -5,6 +5,8 @@ export type IntentType =
   | 'check_item'
   | 'remove_item'
   | 'clear_list'
+  | 'create_reminder'
+  | 'list_reminders'
   | 'unknown';
 
 export interface IntentEntities {
@@ -12,6 +14,10 @@ export interface IntentEntities {
   item?: string;
   items?: string[];
   listName?: string;
+  /** Texto do lembrete */
+  text?: string;
+  /** ISO 8601 datetime do lembrete (ex: "2026-05-16T08:00:00-03:00") */
+  remindAt?: string;
 }
 
 export interface IntentResult {

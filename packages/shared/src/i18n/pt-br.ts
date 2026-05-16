@@ -76,6 +76,27 @@ export const ptBrMessages = {
 
   clearListNotFound: ({ listName }: ListNameParams) =>
     `Lista "${listName}" não encontrada.`,
+
+  reminderCreated: ({ text, dateLabel }: { text: string; dateLabel: string }) =>
+    `⏰ Lembrete criado: "${text}" em ${dateLabel}.`,
+
+  reminderAmbiguousDate: () =>
+    'Não consegui identificar a data/hora do lembrete. Tente ser mais específico, por exemplo: "me lembra de levar a Nicole no médico amanhã às 8h".',
+
+  reminderMissingText: () =>
+    'Não entendi o que devo te lembrar. Tente: "me lembra de levar a Nicole no médico amanhã às 8h".',
+
+  reminderPastDate: () =>
+    'Essa data já passou. Informe uma data futura para o lembrete.',
+
+  reminderNotification: ({ text }: { text: string }) => `⏰ Lembrete: ${text}`,
+
+  remindersHeader: () => 'Seus lembretes pendentes:',
+
+  remindersEmpty: () => 'Não há lembretes pendentes.',
+
+  remindersReply: (items: Array<{ dateLabel: string; text: string }>) =>
+    `Lembretes pendentes:\n${items.map((r) => `• ${r.dateLabel} — ${r.text}`).join('\n')}`,
 } as const;
 
 export type Messages = typeof ptBrMessages;

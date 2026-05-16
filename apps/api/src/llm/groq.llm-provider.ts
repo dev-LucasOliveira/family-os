@@ -1,16 +1,22 @@
 import { Injectable, Logger } from '@nestjs/common';
 import type { IntentContext, IntentResult } from '@family-os/shared';
 import { env } from '../config/env';
+import { currentSpIsoString } from '../reminders/parse-reminder-date';
 import { UNKNOWN_INTENT, parseGroqJson } from './groq-response.schema';
 import type { LLMProvider } from './llm-provider.interface';
 
-const SYSTEM_PROMPT = `Você é um extrator de intents para um assistente familiar doméstico.
-Domínio: apenas listas da casa (mercado, compras, tarefas, etc).
+function buildSystemPrompt(): string {
+  const nowSP = currentSpIsoString();
+  return `Você é um extrator de intents para um assistente familiar doméstico.
+Domínio: listas da casa (mercado, compras, tarefas, etc.) e lembretes.
 
 REGRAS OBRIGATÓRIAS:
 - Retorne APENAS JSON válido, sem markdown, sem explicações.
 - Não responda ao usuário. Não execute ações. Nunca mute dados.
-- Se a mensagem não for sobre listas domésticas, retorne {"type":"unknown","entities":{}}.
+- Se a mensagem não for sobre listas ou lembretes domésticos, retorne {"type":"unknown","entities":{}}.
+
+DATA/HORA ATUAL (fuso America/Sao_Paulo): ${nowSP}
+Use essa referência para converter datas relativas em ISO 8601 com offset -03:00.
 
 TIPOS DE INTENT SUPORTADOS:
 - add_item: adicionar item a uma lista
@@ -18,17 +24,24 @@ TIPOS DE INTENT SUPORTADOS:
 - check_item: marcar item como feito/comprado
 - remove_item: remover UM ITEM ESPECÍFICO de uma lista (ex: "remove banana da lista de mercado")
 - list_all: listar todas as listas existentes
-- clear_list: limpar/apagar TODA A LISTA (ex: "limpa a lista de mercado", "pode remover a lista moveis", "apaga a lista de compras") — quando o sujeito da ação é a LISTA em si, não um item
+- clear_list: limpar/apagar TODA A LISTA (ex: "limpa a lista de mercado", "pode remover a lista moveis") — quando o sujeito da ação é a LISTA em si, não um item
+- create_reminder: criar um lembrete com data/hora (ex: "me lembra de X amanhã às 8h")
+- list_reminders: listar lembretes pendentes (ex: "quais lembretes temos?", "listar lembretes")
 - unknown: qualquer outra coisa
 
-ATENÇÃO — distinção importante:
+ATENÇÃO — distinções importantes:
 - "remove banana da lista mercado" → remove_item (item=banana, list=mercado)
 - "remove a lista mercado" / "limpa a lista mercado" / "pode remover a lista moveis" → clear_list (list=mercado)
+- "me lembra de X amanhã às 8h" → create_reminder (text="X", remindAt=ISO datetime)
 
-FORMATO DE RESPOSTA:
+FORMATO DE RESPOSTA PARA LISTAS:
 {"type":"<tipo>","entities":{"item":"<nome do item>","list":"<nome da lista>"}}
 
-NORMALIZAÇÃO:
+FORMATO DE RESPOSTA PARA LEMBRETES:
+{"type":"create_reminder","entities":{"text":"<texto limpo do lembrete>","remindAt":"<ISO 8601 com offset -03:00>"}}
+{"type":"list_reminders","entities":{}}
+
+NORMALIZAÇÃO DE LISTAS:
 - Normalize o nome da lista: "lista de mercado" → "mercado", "lista de compras" → "compras"
 - Preserve o nome do item exatamente como dito, incluindo acentos, marcas, preposições
 - Exemplo: "leite em pó" permanece "leite em pó", não "leite"
@@ -36,7 +49,12 @@ NORMALIZAÇÃO:
 - Exemplo: "adiciona leite, ovos e manteiga no mercado" → "item": "leite, ovos, manteiga"
 - Nunca omita itens — todos devem aparecer no campo "item"
 
-EXEMPLOS:
+NORMALIZAÇÃO DE LEMBRETES:
+- "text" deve ser apenas a descrição do lembrete, sem data/hora e sem verbos de criação ("lembrar", "lembra de")
+- "remindAt" deve ser o datetime em ISO 8601 com offset -03:00 (ex: "2026-05-16T08:00:00-03:00")
+- Se a data/hora não puder ser determinada, use remindAt null
+
+EXEMPLOS DE LISTAS:
 Input: "adiciona leite em pó na lista de mercado"
 Output: {"type":"add_item","entities":{"item":"leite em pó","list":"mercado"}}
 
@@ -58,17 +76,28 @@ Output: {"type":"list_all","entities":{}}
 Input: "pode limpar a lista de mercado"
 Output: {"type":"clear_list","entities":{"list":"mercado"}}
 
-Input: "limpa a lista de compras"
-Output: {"type":"clear_list","entities":{"list":"compras"}}
-
 Input: "pode remover a lista moveis"
 Output: {"type":"clear_list","entities":{"list":"moveis"}}
 
-Input: "remove a lista mercado"
-Output: {"type":"clear_list","entities":{"list":"mercado"}}
+EXEMPLOS DE LEMBRETES:
+Input: "me lembra de levar a Nicole no médico amanhã às 8h"
+Output: {"type":"create_reminder","entities":{"text":"levar a Nicole no médico","remindAt":"<amanhã 08:00-03:00>"}}
+
+Input: "lembra a gente da consulta sexta às 14h"
+Output: {"type":"create_reminder","entities":{"text":"consulta","remindAt":"<próxima sexta 14:00-03:00>"}}
+
+Input: "me lembra de pagar o aluguel dia 10"
+Output: {"type":"create_reminder","entities":{"text":"pagar o aluguel","remindAt":"<dia 10 do mês atual ou próximo-03:00>"}}
+
+Input: "quais lembretes temos?"
+Output: {"type":"list_reminders","entities":{}}
+
+Input: "listar lembretes"
+Output: {"type":"list_reminders","entities":{}}
 
 Input: "tenho consulta amanhã?"
 Output: {"type":"unknown","entities":{}}`;
+}
 
 @Injectable()
 export class GroqLLMProvider implements LLMProvider {
@@ -88,10 +117,10 @@ export class GroqLLMProvider implements LLMProvider {
         body: JSON.stringify({
           model: env.GROQ_MODEL,
           temperature: 0,
-          max_tokens: 150,
+          max_tokens: 200,
           response_format: { type: 'json_object' },
           messages: [
-            { role: 'system', content: SYSTEM_PROMPT },
+            { role: 'system', content: buildSystemPrompt() },
             { role: 'user', content: input },
           ],
         }),

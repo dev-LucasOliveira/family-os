@@ -1,5 +1,6 @@
 import type { IntentResult, IntentType } from '@family-os/shared';
 import { normalizeListName, splitItemNames } from '@family-os/shared';
+import { parsePtBrReminderDate } from '../reminders/parse-reminder-date';
 
 const TRAILING_PUNCTUATION = /[.!?]+$/;
 
@@ -114,6 +115,56 @@ const LIST_ALL_PATTERNS: RegExp[] = [
   /^ver\s+(?:todas\s+as\s+)?listas[.!?]?$/iu,
 ];
 
+const LIST_REMINDERS_PATTERNS: RegExp[] = [
+  /^(?:quais|mostre?|ver?|listar?)\s+(?:os\s+)?lembretes?[.!?]?$/iu,
+  /^lembretes?\s+(?:pendentes?|ativos?)[.!?]?$/iu,
+  /^o\s+que\s+tenho\s+de\s+lembrar[.!?]?$/iu,
+];
+
+const CREATE_REMINDER_VERBS =
+  /^(?:me\s+)?lembra(?:r)?\s+(?:a\s+gente\s+)?(?:de?\s+)?(.+)$/iu;
+
+function parseListReminders(text: string): IntentResult | null {
+  const body = stripTrailingPunctuation(text);
+  for (const pattern of LIST_REMINDERS_PATTERNS) {
+    if (pattern.test(body)) {
+      return { type: 'list_reminders', entities: {}, confidence: 1, rawInput: text };
+    }
+  }
+  return null;
+}
+
+function parseCreateReminder(text: string): IntentResult | null {
+  const body = stripTrailingPunctuation(text);
+  const match = body.match(CREATE_REMINDER_VERBS);
+  if (!match?.[1]) return null;
+
+  const rest = match[1].trim();
+  const date = parsePtBrReminderDate(rest);
+
+  // Strip the time/date tokens from the reminder text to get a clean description
+  const cleanText = rest
+    .replace(/(?:as?\s+)?\d{1,2}(?::\d{2})?h(?:oras?)?/gi, '')
+    .replace(/\b(?:amanhã|amanha|hoje|depois de amanhã?|depois amanha)\b/gi, '')
+    .replace(/\b(?:segunda|terça|terca|quarta|quinta|sexta|sábado|sabado|domingo)(?:-feira)?\b/gi, '')
+    .replace(/\bdia\s+\d{1,2}\b/gi, '')
+    .replace(/\bàs?\b/gi, '')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+
+  if (!cleanText) return null;
+
+  return {
+    type: 'create_reminder',
+    entities: {
+      text: cleanText,
+      remindAt: date?.toISOString(),
+    },
+    confidence: date ? 1 : 0.7,
+    rawInput: text,
+  };
+}
+
 function parseListAll(text: string): IntentResult | null {
   const body = stripTrailingPunctuation(text);
 
@@ -157,8 +208,10 @@ export function parseDeterministicIntent(input: string): IntentResult {
 
   const parsers: Array<() => IntentResult | null> = [
     () => parseListAll(text),
+    () => parseListReminders(text),
     () => parseClearList(text),
     () => parseGetList(text),
+    () => parseCreateReminder(text),
     () => parseWithVerb(text, ADD_VERBS, 'add_item'),
     () => parseWithVerb(text, REMOVE_VERBS, 'remove_item'),
     () => parseWithVerb(text, CHECK_VERBS, 'check_item'),

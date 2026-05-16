@@ -2,14 +2,23 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { getMessages, type IntentResult } from '@family-os/shared';
 import { env } from '../config/env';
 import { ListsService } from '../lists/lists.service';
+import { RemindersService } from '../reminders/reminders.service';
+import { formatSpDate } from '../reminders/parse-reminder-date';
 
 @Injectable()
 export class IntentHandlerService {
   private readonly messages = getMessages(env.LOCALE);
 
-  constructor(private readonly listsService: ListsService) {}
+  constructor(
+    private readonly listsService: ListsService,
+    private readonly remindersService: RemindersService,
+  ) {}
 
-  async execute(intent: IntentResult, householdId: string): Promise<string> {
+  async execute(
+    intent: IntentResult,
+    householdId: string,
+    personId?: string,
+  ): Promise<string> {
     const { type, entities } = intent;
     const listName = entities.listName;
     const items = entities.items ?? [];
@@ -84,6 +93,46 @@ export class IntentHandlerService {
           return this.messages.allListsEmpty();
         }
         return this.messages.allListsReply(lists.map((l) => l.name));
+      }
+
+      case 'create_reminder': {
+        const { text, remindAt } = entities;
+
+        if (!text) {
+          return this.messages.reminderMissingText();
+        }
+
+        if (!remindAt) {
+          return this.messages.reminderAmbiguousDate();
+        }
+
+        const remindAtDate = new Date(remindAt);
+        if (isNaN(remindAtDate.getTime())) {
+          return this.messages.reminderAmbiguousDate();
+        }
+
+        if (remindAtDate <= new Date()) {
+          return this.messages.reminderPastDate();
+        }
+
+        await this.remindersService.createReminder({
+          householdId,
+          createdByPersonId: personId,
+          text,
+          remindAt: remindAtDate,
+        });
+
+        return this.messages.reminderCreated({ text, dateLabel: formatSpDate(remindAtDate) });
+      }
+
+      case 'list_reminders': {
+        const pending = await this.remindersService.listPendingReminders(householdId);
+        if (pending.length === 0) {
+          return this.messages.remindersEmpty();
+        }
+        return this.messages.remindersReply(
+          pending.map((r) => ({ dateLabel: formatSpDate(r.remindAt), text: r.text })),
+        );
       }
 
       default:

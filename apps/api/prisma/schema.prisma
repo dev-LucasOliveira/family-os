@@ -9,23 +9,25 @@ datasource db {
 }
 
 model Person {
-  id          String   @id @default(cuid())
-  telegramId  String   @unique @map("telegram_id")
-  displayName String?  @map("display_name")
-  lastSeenAt  DateTime @default(now()) @map("last_seen_at")
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
+  id          String     @id @default(cuid())
+  telegramId  String     @unique @map("telegram_id")
+  displayName String?    @map("display_name")
+  lastSeenAt  DateTime   @default(now()) @map("last_seen_at")
+  createdAt   DateTime   @default(now()) @map("created_at")
+  updatedAt   DateTime   @updatedAt @map("updated_at")
+  reminders   Reminder[]
 
   @@map("people")
 }
 
 model Household {
-  id             String   @id @default(cuid())
-  telegramChatId String   @unique @map("telegram_chat_id")
+  id             String     @id @default(cuid())
+  telegramChatId String     @unique @map("telegram_chat_id")
   name           String?
-  createdAt      DateTime @default(now()) @map("created_at")
-  updatedAt      DateTime @updatedAt @map("updated_at")
+  createdAt      DateTime   @default(now()) @map("created_at")
+  updatedAt      DateTime   @updatedAt @map("updated_at")
   lists          List[]
+  reminders      Reminder[]
 
   @@map("households")
 }
@@ -54,4 +56,20 @@ model ListItem {
 
   @@unique([listId, name])
   @@map("list_items")
+}
+
+model Reminder {
+  id                String    @id @default(cuid())
+  householdId       String    @map("household_id")
+  household         Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  createdByPersonId String?   @map("created_by_person_id")
+  createdByPerson   Person?   @relation(fields: [createdByPersonId], references: [id], onDelete: SetNull)
+  text              String
+  remindAt          DateTime  @map("remind_at")
+  sentAt            DateTime? @map("sent_at")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+
+  @@index([remindAt, sentAt])
+  @@map("reminders")
 }

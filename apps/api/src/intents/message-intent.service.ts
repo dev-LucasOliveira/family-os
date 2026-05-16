@@ -16,7 +16,7 @@ export class MessageIntentService {
   ) {}
 
   async processMessage(message: string, context: IntentContext & { householdId: string }): Promise<string> {
-    const { householdId } = context;
+    const { householdId, telegramUserId } = context;
 
     if (env.LLM_PROVIDER === 'groq') {
       try {
@@ -25,7 +25,7 @@ export class MessageIntentService {
           ...context,
         });
         this.logger.log(`[llm] provider=groq type=${intent.type}`);
-        return this.intentHandler.execute(intent, householdId);
+        return this.intentHandler.execute(intent, householdId, telegramUserId);
       } catch (error: unknown) {
         this.logger.warn(
           `[llm] groq falhou, usando fallback determinístico: ${error instanceof Error ? error.message : error}`,
@@ -38,6 +38,6 @@ export class MessageIntentService {
       ...context,
     });
     this.logger.log(`[llm] provider=deterministic type=${intent.type}`);
-    return this.intentHandler.execute(intent, householdId);
+    return this.intentHandler.execute(intent, householdId, telegramUserId);
   }
 }

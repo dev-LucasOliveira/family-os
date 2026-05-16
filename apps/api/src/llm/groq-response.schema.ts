@@ -9,6 +9,8 @@ export const GROQ_INTENT_TYPES = [
   'remove_item',
   'list_all',
   'clear_list',
+  'create_reminder',
+  'list_reminders',
   'unknown',
 ] as const;
 
@@ -18,6 +20,8 @@ export const groqResponseSchema = z.object({
     .object({
       item: z.string().optional(),
       list: z.string().optional(),
+      text: z.string().optional(),
+      remindAt: z.string().optional(),
     })
     .default({}),
 });
@@ -37,12 +41,16 @@ export function mapGroqResponseToIntentResult(
 ): IntentResult {
   const listName = raw.entities.list ? normalizeListName(raw.entities.list) : undefined;
   const items = raw.entities.item ? splitItemNames(raw.entities.item) : undefined;
+  const text = raw.entities.text;
+  const remindAt = raw.entities.remindAt;
 
   return {
     type: raw.type,
     entities: {
       ...(items !== undefined && { items }),
       ...(listName !== undefined && { listName }),
+      ...(text !== undefined && { text }),
+      ...(remindAt !== undefined && { remindAt }),
     },
     confidence: raw.type === 'unknown' ? 0 : 1,
     rawInput: input,
