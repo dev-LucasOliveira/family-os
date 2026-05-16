@@ -32,4 +32,6 @@ export interface IntentContext {
   displayName?: string;
   locale?: string;
   householdId?: string;
+  /** ID interno do Person no Prisma (não o telegramUserId) */
+  personId?: string;
 }

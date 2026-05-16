@@ -28,7 +28,7 @@ export class TelegramMessageHandler {
       message.from?.username ??
       undefined;
 
-    const [household] = await Promise.all([
+    const [household, person] = await Promise.all([
       this.householdService.resolve(telegramChatId),
       telegramUserId
         ? this.personService.resolve(telegramUserId, displayName)
@@ -47,6 +47,7 @@ export class TelegramMessageHandler {
       householdId: household.id,
       telegramUserId,
       displayName,
+      personId: person?.id,
     });
 
     await this.telegramService.sendMessage(message.chat.id, reply);

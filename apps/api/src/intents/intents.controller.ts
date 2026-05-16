@@ -29,7 +29,7 @@ export class IntentsController {
 
     const { message, telegramChatId, telegramUserId, displayName } = parsed.data;
 
-    const [household] = await Promise.all([
+    const [household, person] = await Promise.all([
       this.householdService.resolve(telegramChatId),
       this.personService.resolve(telegramUserId, displayName),
     ]);
@@ -38,6 +38,7 @@ export class IntentsController {
       householdId: household.id,
       telegramUserId,
       displayName,
+      personId: person.id,
     });
 
     return { reply };
