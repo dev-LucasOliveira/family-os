@@ -6,7 +6,7 @@
     "build": "DIRECT_URL=${DIRECT_URL:-$DATABASE_URL} prisma generate && nest build",
     "dev": "pnpm --filter @family-os/shared build && nest start --watch",
     "start": "node dist/main.js",
-    "start:prod": "DIRECT_URL=${DIRECT_URL:-$DATABASE_URL} prisma migrate deploy && node dist/main.js",
+    "start:prod": "node dist/main.js",
     "lint": "tsc --noEmit",
     "test": "pnpm --filter @family-os/shared build && nest build && node --test dist/llm/groq-response.schema.test.js dist/intents/split-item-names.test.js dist/intents/split-multi-item.test.js dist/intents/parse-deterministic-intent.test.js dist/household/household-isolation.test.js dist/reminders/reminders.test.js",
     "db:generate": "prisma generate",
