@@ -7,6 +7,15 @@ import type { LLMProvider } from './llm-provider.interface';
 
 function buildSystemPrompt(): string {
   const nowSP = currentSpIsoString();
+  // Extract date parts for clear examples in the prompt
+  const spDate = nowSP.slice(0, 10); // "YYYY-MM-DD"
+  const spTime = nowSP.slice(11, 16); // "HH:MM"
+
+  // Compute tomorrow's date string
+  const tomorrowDate = new Date(new Date().getTime() + 24 * 60 * 60 * 1000)
+    .toLocaleString('sv-SE', { timeZone: 'America/Sao_Paulo' })
+    .slice(0, 10);
+
   return `Você é um extrator de intents para um assistente familiar doméstico.
 Domínio: listas da casa (mercado, compras, tarefas, etc.) e lembretes.
 
@@ -15,8 +24,18 @@ REGRAS OBRIGATÓRIAS:
 - Não responda ao usuário. Não execute ações. Nunca mute dados.
 - Se a mensagem não for sobre listas ou lembretes domésticos, retorne {"type":"unknown","entities":{}}.
 
-DATA/HORA ATUAL (fuso America/Sao_Paulo): ${nowSP}
-Use essa referência para converter datas relativas em ISO 8601 com offset -03:00.
+REFERÊNCIA DE DATA/HORA (fuso America/Sao_Paulo, UTC-3):
+- Agora: ${nowSP}
+- Data de hoje em SP: ${spDate}
+- Hora atual em SP: ${spTime}
+- Data de amanhã em SP: ${tomorrowDate}
+
+REGRA CRÍTICA PARA DATAS DE LEMBRETES:
+- Se o horário pedido ainda NÃO chegou hoje (hora pedida > ${spTime}): use a data de HOJE (${spDate})
+- Se o horário pedido já passou hoje (hora pedida <= ${spTime}): use AMANHÃ (${tomorrowDate})
+- "amanhã" sempre significa ${tomorrowDate}
+- "hoje" sempre significa ${spDate}
+- Sempre use offset -03:00 no remindAt
 
 TIPOS DE INTENT SUPORTADOS:
 - add_item: adicionar item a uma lista
@@ -80,15 +99,18 @@ Output: {"type":"clear_list","entities":{"list":"mercado"}}
 Input: "pode remover a lista moveis"
 Output: {"type":"clear_list","entities":{"list":"moveis"}}
 
-EXEMPLOS DE LEMBRETES:
+EXEMPLOS DE LEMBRETES (assumindo que hoje=${spDate} e amanhã=${tomorrowDate}, hora atual=${spTime}):
 Input: "me lembra de levar a Nicole no médico amanhã às 8h"
-Output: {"type":"create_reminder","entities":{"text":"levar a Nicole no médico","remindAt":"<amanhã 08:00-03:00>"}}
+Output: {"type":"create_reminder","entities":{"text":"levar a Nicole no médico","remindAt":"${tomorrowDate}T08:00:00-03:00"}}
 
 Input: "lembra a gente da consulta sexta às 14h"
-Output: {"type":"create_reminder","entities":{"text":"consulta","remindAt":"<próxima sexta 14:00-03:00>"}}
+Output: {"type":"create_reminder","entities":{"text":"consulta","remindAt":"<próxima sexta-feira>T14:00:00-03:00"}}
 
 Input: "me lembra de pagar o aluguel dia 10"
-Output: {"type":"create_reminder","entities":{"text":"pagar o aluguel","remindAt":"<dia 10 do mês atual ou próximo-03:00>"}}
+Output: {"type":"create_reminder","entities":{"text":"pagar o aluguel","remindAt":"<dia 10 do mês atual ou próximo se já passou>T09:00:00-03:00"}}
+
+Input: "me lembra amanhã às 8h de levar a Nicole no médico"
+Output: {"type":"create_reminder","entities":{"text":"levar a Nicole no médico","remindAt":"${tomorrowDate}T08:00:00-03:00"}}
 
 Input: "quais lembretes temos?"
 Output: {"type":"list_reminders","entities":{}}
@@ -110,9 +132,11 @@ Output: {"type":"unknown","entities":{}}`;
 export class GroqLLMProvider implements LLMProvider {
   private readonly logger = new Logger(GroqLLMProvider.name);
 
-  async extractIntent(input: string, _context?: IntentContext): Promise<IntentResult> {
+  async extractIntent(input: string, context?: IntentContext): Promise<IntentResult> {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), env.GROQ_TIMEOUT_MS);
+
+    const history = context?.conversationHistory ?? [];
 
     try {
       const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
@@ -128,6 +152,7 @@ export class GroqLLMProvider implements LLMProvider {
           response_format: { type: 'json_object' },
           messages: [
             { role: 'system', content: buildSystemPrompt() },
+            ...history,
             { role: 'user', content: input },
           ],
         }),

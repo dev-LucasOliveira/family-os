@@ -35,4 +35,6 @@ export interface IntentContext {
   householdId?: string;
   /** ID interno do Person no Prisma (não o telegramUserId) */
   personId?: string;
+  /** Histórico recente da conversa para contexto multi-turn */
+  conversationHistory?: Array<{ role: 'user' | 'assistant'; content: string }>;
 }

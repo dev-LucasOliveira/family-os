@@ -3,6 +3,7 @@ import { HouseholdModule } from '../household/household.module';
 import { LlmModule } from '../llm/llm.module';
 import { ListsModule } from '../lists/lists.module';
 import { RemindersModule } from '../reminders/reminders.module';
+import { ConversationStoreService } from './conversation-store.service';
 import { DeterministicIntentParser } from './deterministic-intent.parser';
 import { IntentHandlerService } from './intent-handler.service';
 import { IntentsController } from './intents.controller';
@@ -13,6 +14,7 @@ import { MessageIntentService } from './message-intent.service';
   imports: [ListsModule, LlmModule, HouseholdModule, RemindersModule],
   controllers: [IntentsController],
   providers: [
+    ConversationStoreService,
     DeterministicIntentParser,
     IntentHandlerService,
     MessageIntentService,
