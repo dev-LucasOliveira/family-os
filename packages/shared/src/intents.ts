@@ -7,6 +7,7 @@ export type IntentType =
   | 'clear_list'
   | 'create_reminder'
   | 'list_reminders'
+  | 'cancel_reminder'
   | 'unknown';
 
 export interface IntentEntities {

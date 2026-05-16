@@ -44,11 +44,12 @@ export const ptBrMessages = {
   unknownIntent: () =>
     [
       'Ainda não entendi essa mensagem.',
-      'Por enquanto consigo ajudar com listas da casa. Tente:',
+      'Consigo ajudar com listas e lembretes. Exemplos:',
       '"adiciona banana na mercearia",',
       '"mostra lista compras",',
-      '"marca banana na mercearia" ou',
-      '"remove banana da mercearia".',
+      '"me lembra de pagar o aluguel dia 10 às 9h",',
+      '"quais lembretes temos?" ou',
+      '"cancela o lembrete do aluguel".',
     ].join(' '),
 
   emptyMessageHint: () =>
@@ -97,6 +98,14 @@ export const ptBrMessages = {
 
   remindersReply: (items: Array<{ dateLabel: string; text: string }>) =>
     `Lembretes pendentes:\n${items.map((r) => `• ${r.dateLabel} — ${r.text}`).join('\n')}`,
+
+  reminderCancelled: ({ text }: { text: string }) => `Lembrete cancelado: "${text}".`,
+
+  reminderCancelNotFound: ({ text }: { text: string }) =>
+    `Não encontrei nenhum lembrete pendente com "${text}". Use "quais lembretes temos?" para ver os disponíveis.`,
+
+  reminderCancelAmbiguous: (matches: string[]) =>
+    `Encontrei ${matches.length} lembretes com esse texto. Qual deles?\n${matches.map((m, i) => `${i + 1}. ${m}`).join('\n')}`,
 } as const;
 
 export type Messages = typeof ptBrMessages;

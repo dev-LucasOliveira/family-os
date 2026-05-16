@@ -124,6 +124,27 @@ const LIST_REMINDERS_PATTERNS: RegExp[] = [
 const CREATE_REMINDER_VERBS =
   /^(?:me\s+)?lembra(?:r)?\s+(?:a\s+gente\s+)?(?:de?\s+)?(.+)$/iu;
 
+const CANCEL_REMINDER_PATTERNS: RegExp[] = [
+  /^(?:cancela|cancelar|remove|remover|apaga|apagar|deleta|deletar|exclui|excluir)\s+(?:o\s+|a\s+)?lembrete\s+(?:d[oae]\s+)?(.+)$/iu,
+  /^(?:cancela|cancelar)\s+(?:o\s+lembrete\s+)?(?:d[oae]\s+)?(.+)$/iu,
+];
+
+function parseCancelReminder(text: string): IntentResult | null {
+  const body = stripTrailingPunctuation(text);
+  for (const pattern of CANCEL_REMINDER_PATTERNS) {
+    const match = body.match(pattern);
+    const reminderText = match?.[1]?.trim();
+    if (!reminderText) continue;
+    return {
+      type: 'cancel_reminder',
+      entities: { text: reminderText },
+      confidence: 1,
+      rawInput: text,
+    };
+  }
+  return null;
+}
+
 function parseListReminders(text: string): IntentResult | null {
   const body = stripTrailingPunctuation(text);
   for (const pattern of LIST_REMINDERS_PATTERNS) {
@@ -209,6 +230,7 @@ export function parseDeterministicIntent(input: string): IntentResult {
   const parsers: Array<() => IntentResult | null> = [
     () => parseListAll(text),
     () => parseListReminders(text),
+    () => parseCancelReminder(text),
     () => parseClearList(text),
     () => parseGetList(text),
     () => parseCreateReminder(text),

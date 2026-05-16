@@ -27,6 +27,7 @@ TIPOS DE INTENT SUPORTADOS:
 - clear_list: limpar/apagar TODA A LISTA (ex: "limpa a lista de mercado", "pode remover a lista moveis") — quando o sujeito da ação é a LISTA em si, não um item
 - create_reminder: criar um lembrete com data/hora (ex: "me lembra de X amanhã às 8h")
 - list_reminders: listar lembretes pendentes (ex: "quais lembretes temos?", "listar lembretes")
+- cancel_reminder: cancelar/remover um lembrete pendente (ex: "cancela o lembrete da consulta")
 - unknown: qualquer outra coisa
 
 ATENÇÃO — distinções importantes:
@@ -94,6 +95,12 @@ Output: {"type":"list_reminders","entities":{}}
 
 Input: "listar lembretes"
 Output: {"type":"list_reminders","entities":{}}
+
+Input: "cancela o lembrete da consulta"
+Output: {"type":"cancel_reminder","entities":{"text":"consulta"}}
+
+Input: "remove o lembrete de pagar o aluguel"
+Output: {"type":"cancel_reminder","entities":{"text":"pagar o aluguel"}}
 
 Input: "tenho consulta amanhã?"
 Output: {"type":"unknown","entities":{}}`;

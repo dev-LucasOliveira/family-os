@@ -49,4 +49,18 @@ export class RemindersService {
       data: { sentAt: new Date() },
     });
   }
+
+  /**
+   * Finds pending reminders matching the given text (case-insensitive, partial).
+   * Returns matched reminders for the caller to decide (cancel if exactly 1, ask if multiple).
+   */
+  async findPendingByText(householdId: string, text: string) {
+    const all = await this.listPendingReminders(householdId);
+    const lower = text.toLowerCase();
+    return all.filter((r) => r.text.toLowerCase().includes(lower));
+  }
+
+  async deleteReminder(id: string) {
+    return this.prisma.reminder.delete({ where: { id } });
+  }
 }

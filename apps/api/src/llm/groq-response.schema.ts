@@ -11,6 +11,7 @@ export const GROQ_INTENT_TYPES = [
   'clear_list',
   'create_reminder',
   'list_reminders',
+  'cancel_reminder',
   'unknown',
 ] as const;
 

@@ -125,6 +125,26 @@ export class IntentHandlerService {
         return this.messages.reminderCreated({ text, dateLabel: formatSpDate(remindAtDate) });
       }
 
+      case 'cancel_reminder': {
+        const { text } = entities;
+        if (!text) return this.messages.reminderMissingText();
+
+        const matches = await this.remindersService.findPendingByText(householdId, text);
+
+        if (matches.length === 0) {
+          return this.messages.reminderCancelNotFound({ text });
+        }
+
+        if (matches.length > 1) {
+          return this.messages.reminderCancelAmbiguous(
+            matches.map((r) => `${formatSpDate(r.remindAt)} — ${r.text}`),
+          );
+        }
+
+        await this.remindersService.deleteReminder(matches[0]!.id);
+        return this.messages.reminderCancelled({ text: matches[0]!.text });
+      }
+
       case 'list_reminders': {
         const pending = await this.remindersService.listPendingReminders(householdId);
         if (pending.length === 0) {
